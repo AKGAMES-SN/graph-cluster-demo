@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Postgresライターノード
+  db-writer:
+    image: postgres:16.2
+    user: postgres
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      POSTGRES_HOST_AUTH_METHOD: "scram-sha-256\nhost replication all 0.0.0.0/0 md5"
+    command: |
+      postgres 
+      -c wal_level=replica 
+      -c hot_standby=on 
+      -c max_wal_senders=10 
+      -c max_replication_slots=10 
+      -c hot_standby_feedback=on
+    volumes:
+      - ./assets/00_init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+      - ./data/db-writer:/var/lib/postgresql/data
+
+  # Postgresレプリカノード
+  db-replica01:
+    image: postgres:16.2
+    user: postgres
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: password
+      # レプリケーション用ユーザ
+      PGUSER: replicator
+      PGPASSWORD: password
+    command: |
+      bash -c "
+      until pg_basebackup --pgdata=/var/lib/postgresql/data/pgdata -R --slot=replication_slot --host=db-writer --port=5432
+      do
+      echo 'Waiting for primary to connect...'
+      sleep 1s
+      done
+      echo 'Backup done, starting replica...'
+      chmod 0700 /var/lib/postgresql/data 
+      postgres
+      "
+    volumes:
+      - ./data/db-replica01:/var/lib/postgresql/data
+    depends_on:
+      - db-writer
+
+  # IPFSノード
+  ipfs:
+    image: ipfs/go-ipfs:v0.10.0
+    environment:
+      IPFS_PATH: /data
+    volumes:
+      - ./data/ipfs:/data
+    ports:
+      - 5001:5001
+
+  # GraphAPI専用ノード
+  # インデクサーノード/クエリ専用ノードでも良いが構成パターン紹介として用意
+  graph-api:
+    image: graphprotocol/graph-node:f82c215
+    entrypoint: graph-node --config=/graph.toml
+    environment:
+      GRAPH_NODE_ID: api
+      IPFS: ipfs:5001
+    volumes:
+      - ./assets/graph.toml:/graph.toml:ro
+    ports:
+      - 8000:8000
+      - 8020:8020
+
+  # Graphインデクサーノード(1台目)
+  graph-indexer01:
+    image: graphprotocol/graph-node:f82c215
+    entrypoint: graph-node --config=/graph.toml
+    environment:
+      GRAPH_NODE_ID: indexer01
+      IPFS: ipfs:5001
+    volumes:
+      - ./assets/graph.toml:/graph.toml:ro
+
+  # Graphインデクサーノード(2台目)
+  graph-indexer02:
+    image: graphprotocol/graph-node:f82c215
+    entrypoint: graph-node --config=/graph.toml
+    environment:
+      GRAPH_NODE_ID: indexer02
+      IPFS: ipfs:5001
+    volumes:
+      - ./assets/graph.toml:/graph.toml:ro
+
+  # Graphクエリ専用ノード(1台目)
+  graph-query01:
+    image: graphprotocol/graph-node:f82c215
+    entrypoint: graph-node --config=/graph.toml
+    environment:
+      GRAPH_NODE_ID: query01
+      IPFS: ipfs:5001
+    volumes:
+      - ./assets/graph.toml:/graph.toml:ro
+    ports:
+      - 8001:8000
+
+  # Graphクエリ専用ノード(2台目)
+  graph-query02:
+    image: graphprotocol/graph-node:f82c215
+    entrypoint: graph-node --config=/graph.toml
+    environment:
+      GRAPH_NODE_ID: query02
+      IPFS: ipfs:5001
+    volumes:
+      - ./assets/graph.toml:/graph.toml:ro
+    ports:
+      - 8002:8000

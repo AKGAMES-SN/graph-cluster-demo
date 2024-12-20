@@ -1,0 +1,97 @@
+##################################
+# 基本設定
+##################################
+[general]
+# この正規表現に一致するノードはクエリ専用となる
+query = "query.*"
+
+
+##################################
+# データベースシャード(クラスタ)設定  
+##################################
+[store]
+
+# `primary`シャードは必須
+
+# ライターノード設定
+[store.primary]
+connection = "postgresql://graph_user:graph_password@db-writer/graph"
+weight     = 0  # 0に設定すると書き込み専用扱いとなる
+pool_size  = 5
+
+# レプリカノード設定
+[store.primary.replicas.replica01]
+connection = "postgresql://graph_user:graph_password@db-replica01/graph"
+weight     = 1  # 5倍の参照負荷
+pool_size  = 5
+
+# 複数のシャードを使用する場合は列挙する
+# [store.shard01]
+# connection =
+# weight     =
+# pool_size  =
+
+
+###################
+# 接続先チェーン設定
+###################
+[chains]
+# ブロックの基本データ(ハッシュ値等)を収集する代表ノードのIDを指定する
+# (注: このノードが無くともインデクシングされるので必要性が不明)
+ingestor = "ingestor-node-id"
+
+[chains.chain01]
+# このチェーンデータを保存するシャードを指定
+shard = "primary"
+# 接続先RPCの設定
+provider = [
+    # label: ここで指定した名前をマニフェストファイルの`dataSources[].network`で指定する
+    # features: 対象RPCで利用可能なメソッド種別の指定
+    #           traces,archiveは必須と思われる
+    #           RPCがgethの場合はdebug系APIの許可が必要となる
+    { label = "chain01", features = ["traces","archive"], url = "http://host.docker.internal:8545" },
+]
+
+# 複数チェーンをインデクシングしたい場合は列挙する
+# [chains.chain02]
+# shard = "primary"
+# provider = [
+#     { label = "chain02", features = ["traces","archive"], url = "..." },
+# ]
+
+
+###########################
+# サブグラフのデプロイ制御設定
+###########################
+[deployment]
+
+# サブグラフのどのインデクサーノードおよびシャードに処理させるかのルール設定
+[[deployment.rule]]
+# このルールを適用するサブグラフのマッチング条件設定で`network`と`name`が利用可能
+# networkはマニフェストファイルの`dataSources[].network`に一致する
+# nameは`graph create/deploy`コマンドでのデプロイ時に指定した名前に一致する(正規表現可)
+# match = { network = ["chain01"] }
+match = { name = "(alice|bob)/.*" }
+
+# 一致したサブグラフをどのシャードに保存するかの設定で`shard`と`shards`のどちらかが利用可能
+# shardは固定指定、shardsはリスト内から最もサブグラフ数が少ないシャードが自動選択される
+# 一度選択されたら以降は固定なので注意
+shard = "primary"
+# shards = ["shard01", "shard02"]
+
+# 一致したサブグラフをどのノードにインデクシングさせるかの指定
+# 複数指定した場合は担当するサブグラフ数が均等になるように自動選択される
+# 負荷状況等は考慮されないので注意
+indexers = ["indexer01", "indexer02"]
+
+# 複数ルールを定義したい場合は列挙する
+# [[deployment.rule]]
+# match    = 
+# shard    = 
+# indexers =
+
+# 他ルールに一致しなかった場合のデフォルトルール
+# これがないと起動エラーになるので注意
+[[deployment.rule]]
+shard    = "primary"
+indexers = ["indexer01", "indexer02"]
