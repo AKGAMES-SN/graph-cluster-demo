@@ -105,8 +105,21 @@ docker-compose up graph-api
 docker-compose up graph-query01 graph-query02 graph-indexer01 graph-indexer02 
 ```
 
+
+## グラフノードの監視について
+Prometheus形式のメトリクスがポート`8040`で公開されているのでそれを監視する。特に以下のメトリクスが監視に有用と思われる。
+
+データベース接続の失敗回数。
+```shell
+store_connection_error_count{pool="main",shard="primary"} 9
+store_connection_error_count{pool="replica1",shard="primary"} 0
 ```
 
+JSON-RPC呼び出しの失敗回数。
+```shell
+endpoint_request{conn_type="rpc",provider="chain01",req_type="eth_getBlockByNumber",result="failure"} 6
+endpoint_request{conn_type="rpc",provider="chain01",req_type="web3_clientVersion",result="failure"} 1
+```
 
 
 ## 参考：公式ドキュメント

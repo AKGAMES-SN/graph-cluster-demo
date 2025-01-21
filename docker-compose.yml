@@ -81,6 +81,7 @@ services:
     ports:
       - 8000:8000
       - 8020:8020
+      - 8040:8040
 
   # Graphインデクサーノード(1台目)
   graph-indexer01:
