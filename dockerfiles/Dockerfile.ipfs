@@ -1,0 +1,33 @@
+# kuboとgo-ds-s3のバージョンは合わせなければならない
+ARG VERSION="v0.32.1"
+
+#### Build Stage ####
+FROM golang:1.23 AS builder
+
+ARG VERSION
+
+# go-ds-s3をクローン
+RUN git clone https://github.com/ipfs/go-ds-s3.git /go-ds-s3 && \
+  cd /go-ds-s3 && \
+  git checkout go-ds-s3-plugin/$VERSION
+
+# kuboをクローン
+RUN git clone https://github.com/ipfs/kubo.git /kubo
+WORKDIR /kubo
+RUN git checkout $VERSION
+
+# ファイルシステム上のgo-ds-s3パッケージを読み込む様にgo.modを調整
+RUN go mod edit -replace github.com/ipfs/go-ds-s3=/go-ds-s3
+RUN go get github.com/ipfs/go-ds-s3
+
+# ビルド時にプラグインを読み込ませる
+RUN echo "s3ds github.com/ipfs/go-ds-s3/plugin 0" >> plugin/loader/preload_list
+
+# ビルド
+RUN make build
+
+#### Final Stage ####
+FROM ipfs/kubo:$VERSION
+
+# バイナリをS3対応版に差し替え
+COPY --from=builder /kubo/cmd/ipfs/ipfs /usr/local/bin/ipfs

@@ -66,6 +66,49 @@ docker-compose up graph-query01 graph-query02
 | graph-query01 | GraphQL | http://127.0.0.1:8002/subgraphs/name/{SUBGRAPH_NAME} |
 
 
+## IPFS+S3について
+IPFSのストレージバックエンドとしてS3バケットを利用するためには[go-ds-s3](https://github.com/ipfs/go-ds-s3)プラグインを組み込んだバイナリをビルドする必要がある。ビルド手順は[S3対応版のDockerfile](dockerfiles/Dockerfile.ipfs)を参照。
+
+以下手順でお試し利用が可能。
+
+全コンテナを停止してデータディレクトリを消去。
+```shell
+docker-compose down
+rm -r ./data
+```
+
+[assets/ipfs-init-config.json](assets/ipfs-init-config.json)にAPIキーとS3バケット設定を追加
+1. `__ACCESS_KEY__` APIキー(IAMロールを使用する場合は空文字列`""`を指定)
+2. `__SECRET_ACCESS_KEY__` APIシークレット(IAMロールを使用する場合は空文字列`""`を指定)
+3. `__BUCKET_REGION__` S3バケットがあるAWSリージョン
+4. `__BUCKET_NAME__` S3バケット名
+
+[.env](.env)を変更。
+```dotenv
+IPFS_ENDPOINT=ipfs-s3:5001
+```
+
+DBとIPFSを起動。
+```shell
+docker-compose up db-writer db-replica01 ipfs-s3
+```
+
+**この時点でS3バケットにいくつかのファイルが作成されていれば接続成功。**
+
+
+グラフノードを起動。
+```shell
+docker-compose up graph-api
+
+# データベースのマイグレーションが完了するまで数十秒待つ
+
+docker-compose up graph-query01 graph-query02 graph-indexer01 graph-indexer02 
+```
+
+```
+
+
+
 ## 参考：公式ドキュメント
 | 説明 | URL |
 | --- | --- |

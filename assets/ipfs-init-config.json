@@ -1,0 +1,53 @@
+{
+  "Identity": {
+    "PeerID": "12D3KooWMaTonhXmGPMozaa2vCYXwDLHNZT6XA8dDqEybYb2MjTq",
+    "PrivKey": "CAESQJQwXHdyKogLpEvmT36MMdSCQD25fmEjzS7nsn5A0nc/rrx8y5Mmk5SmLkI8V5SIo9kz1fml+J/RUBYLel/Mtiw="
+  },
+  "Addresses": {
+    "API": "/ip4/0.0.0.0/tcp/5001",
+    "Announce": [],
+    "Gateway": "/ip4/0.0.0.0/tcp/8080",
+    "NoAnnounce": [],
+    "Swarm": [
+      "/ip4/0.0.0.0/tcp/4001",
+      "/ip6/::/tcp/4001",
+      "/ip4/0.0.0.0/udp/4001/quic",
+      "/ip6/::/udp/4001/quic"
+    ]
+  },
+  "Datastore": {
+    "StorageGCWatermark": 90,
+    "StorageMax": "10GB",
+    "GCPeriod": "0",
+    "Spec": {
+      "mounts": [
+        {
+          "child": {
+            "type": "s3ds",
+            "accessKey": "__ACCESS_KEY__",
+            "secretKey": "__SECRET_ACCESS_KEY__",
+            "region": "__BUCKET_REGION__",
+            "bucket": "__BUCKET_NAME__",
+            "rootDirectory": "/"
+          },
+          "mountpoint": "/blocks",
+          "prefix": "s3.datastore",
+          "type": "measure"
+        },
+        {
+          "child": {
+            "compression": "none",
+            "path": "datastore",
+            "type": "levelds"
+          },
+          "mountpoint": "/",
+          "prefix": "leveldb.datastore",
+          "type": "measure"
+        }
+      ],
+      "type": "mount"
+    },
+    "HashOnRead": false,
+    "BloomFilterSize": 0
+  }
+}

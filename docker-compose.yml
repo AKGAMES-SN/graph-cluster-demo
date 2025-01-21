@@ -57,6 +57,17 @@ services:
     ports:
       - 5001:5001
 
+  # IPFSノード(S3対応版)
+  ipfs-s3:
+    build:
+      dockerfile: ./dockerfiles/Dockerfile.ipfs
+    user: ipfs
+    entrypoint: ipfs daemon --init --init-config=/ipfs-init-config.json
+    volumes:
+      - ./assets/ipfs-init-config.json:/ipfs-init-config.json:ro
+    ports:
+      - 5002:5001
+
   # GraphAPI専用ノード
   # インデクサーノード/クエリ専用ノードでも良いが構成パターン紹介として用意
   graph-api:
@@ -64,7 +75,7 @@ services:
     entrypoint: graph-node --config=/graph.toml
     environment:
       GRAPH_NODE_ID: api
-      IPFS: ipfs:5001
+      IPFS: $IPFS_ENDPOINT
     volumes:
       - ./assets/graph.toml:/graph.toml:ro
     ports:
@@ -77,7 +88,7 @@ services:
     entrypoint: graph-node --config=/graph.toml
     environment:
       GRAPH_NODE_ID: indexer01
-      IPFS: ipfs:5001
+      IPFS: $IPFS_ENDPOINT
     volumes:
       - ./assets/graph.toml:/graph.toml:ro
 
@@ -87,7 +98,7 @@ services:
     entrypoint: graph-node --config=/graph.toml
     environment:
       GRAPH_NODE_ID: indexer02
-      IPFS: ipfs:5001
+      IPFS: $IPFS_ENDPOINT
     volumes:
       - ./assets/graph.toml:/graph.toml:ro
 
@@ -97,7 +108,7 @@ services:
     entrypoint: graph-node --config=/graph.toml
     environment:
       GRAPH_NODE_ID: query01
-      IPFS: ipfs:5001
+      IPFS: $IPFS_ENDPOINT
     volumes:
       - ./assets/graph.toml:/graph.toml:ro
     ports:
@@ -109,7 +120,7 @@ services:
     entrypoint: graph-node --config=/graph.toml
     environment:
       GRAPH_NODE_ID: query02
-      IPFS: ipfs:5001
+      IPFS: $IPFS_ENDPOINT
     volumes:
       - ./assets/graph.toml:/graph.toml:ro
     ports:
